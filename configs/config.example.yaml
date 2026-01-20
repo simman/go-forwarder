@@ -1,0 +1,87 @@
+# Go-Forwarder Example Configuration
+
+# Global server settings
+server:
+  addr: ":22222"
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 120s
+
+# Logging configuration
+logging:
+  level: info  # debug, info, warn, error
+  format: json # json, text
+  output: stdout # stdout, stderr, or file path
+
+# Default proxy for all services (can be overridden per node)
+default_proxy: "http://127.0.0.1:9091"
+
+# Services definition
+services:
+  - name: app-traffic
+    # Optional: override server addr for this service
+    # addr: ":22222"
+    handler:
+      type: http  # http, tcp
+      metadata:
+        sniffing: true
+        max_body_size: 10mb
+    listener:
+      type: tcp
+    forwarder:
+      nodes:
+        # Simple host filter example
+        - name: palmid-api
+          addr: palmid.com:443
+          filter:
+            host: palmid.com
+          proxy: "http://127.0.0.1:9091"
+          
+        # Full matcher with path prefix
+        - name: example-api
+          addr: example.org:443
+          matcher:
+            rule: Host{example.org} && PathPrefix{/api/v1}
+          proxy: "http://127.0.0.1:9091"
+          
+        # Complex rule with headers and method
+        - name: auth-service
+          addr: auth.example.com:443
+          matcher:
+            rule: Host{auth.example.com} && Method{POST} && Path{/login}
+          proxy: "http://127.0.0.1:9091"
+          
+        # Query parameter matching
+        - name: search-api
+          addr: search.example.com:443
+          matcher:
+            rule: Host{search.example.com} && Query{type=advanced}
+          proxy: "http://127.0.0.1:9091"
+          
+        # Header matching
+        - name: mobile-api
+          addr: api.example.com:443
+          matcher:
+            rule: Host{api.example.com} && Header{X-Client-Type=mobile}
+          proxy: "http://127.0.0.1:9091"
+          
+        # Wildcard host matching
+        - name: subdomain-api
+          addr: api.example.com:443
+          matcher:
+            rule: Host{*.example.com}
+          proxy: "http://127.0.0.1:9091"
+          
+        # Combined conditions with OR
+        - name: multi-method-api
+          addr: api.example.com:443
+          matcher:
+            rule: Host{api.example.com} && (Method{GET} || Method{POST})
+          proxy: "http://127.0.0.1:9091"
+          
+        # Negation example
+        - name: exclude-health
+          addr: api.example.com:443
+          matcher:
+            rule: Host{api.example.com} && !Path{/health}
+          proxy: "http://127.0.0.1:9091"
